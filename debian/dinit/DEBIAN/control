@@ -14,7 +14,7 @@ Description: Service monitoring / "init" system
  init system with dependency management, that was functionally
  superior to many extant inits. Development goals include
  clean design, robustness, portability, usability,
- and avoiding feature bloat (whilst still handling common -
- and some less-common - use cases).
+ and avoiding feature bloat (whilst still handling
+ common - and some less-common - use cases).
  Dinit is designed to integrate with rather than subsume or replace
  other system software.
