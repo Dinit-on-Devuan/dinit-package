@@ -1,0 +1,530 @@
+From e4fd2015301842983620f581aa5e3aacb0c5fc84 Mon Sep 17 00:00:00 2001
+From: Davin McCall <davmac@davmac.org>
+Date: Sat, 10 Dec 2022 08:12:45 +1000
+Subject: [PATCH] Integration tests: use env vars for dinit, dinitctl etc
+ locations
+
+This allows for easier integration with other build systems. Changes
+originally by mobin-2008.
+---
+ src/igr-tests/Makefile                     |  2 +-
+ src/igr-tests/add-rm-dep/run-test.sh       |  8 +++++---
+ src/igr-tests/basic/run-test.sh            |  4 +++-
+ src/igr-tests/chain-to/run-test.sh         |  4 +++-
+ src/igr-tests/check-basic/run-test.sh      |  4 +++-
+ src/igr-tests/check-cycle/run-test.sh      |  4 +++-
+ src/igr-tests/check-lint/run-test.sh       |  4 +++-
+ src/igr-tests/environ/run-test.sh          |  8 +++++---
+ src/igr-tests/environ/setenv.sh            |  4 ++--
+ src/igr-tests/force-stop/run-test.sh       | 10 ++++++----
+ src/igr-tests/no-command-error/run-test.sh |  6 ++++--
+ src/igr-tests/ps-environ/run-test.sh       | 12 +++++++-----
+ src/igr-tests/reload1/run-test.sh          | 18 ++++++++++--------
+ src/igr-tests/reload2/run-test.sh          | 20 +++++++++++---------
+ src/igr-tests/restart/run-test.sh          | 14 ++++++++------
+ src/igr-tests/svc-start-fail/run-test.sh   | 10 ++++++----
+ src/igr-tests/var-subst/run-test.sh        |  4 +++-
+ 17 files changed, 83 insertions(+), 53 deletions(-)
+
+diff --git a/src/igr-tests/Makefile b/src/igr-tests/Makefile
+index 517d2624..affce222 100644
+--- a/src/igr-tests/Makefile
++++ b/src/igr-tests/Makefile
+@@ -1,7 +1,7 @@
+ include ../../mconfig
+ 
+ check-igr: igr-runner
+-	./igr-runner
++	DINIT_EXEC=../../dinit DINITCTL_EXEC=../../dinitctl DINITCHECK_EXEC=../../dinitcheck DINITMONITOR_EXEC=../../dinit-monitor ./igr-runner
+ 
+ igr-runner: igr-runner.cc
+ 	$(CXX) $(CXXOPTS) igr-runner.cc -o igr-runner
+diff --git a/src/igr-tests/add-rm-dep/run-test.sh b/src/igr-tests/add-rm-dep/run-test.sh
+index cd0efa22..2f67590c 100755
+--- a/src/igr-tests/add-rm-dep/run-test.sh
++++ b/src/igr-tests/add-rm-dep/run-test.sh
+@@ -1,6 +1,8 @@
+ #!/bin/sh
+ 
+-../../dinit -d sd -u -p socket -q main &
++cd "$(dirname $0)"
++
++"$DINIT_EXEC" -d sd -u -p socket -q main &
+ DINITPID=$!
+ 
+ # give time for socket to open
+@@ -10,7 +12,7 @@ done
+ 
+ STATUS=FAIL
+ 
+-DINITCTL="../../dinitctl -p socket"
++DINITCTL=""$DINITCTL_EXEC" -p socket"
+ 
+ while
+ 
+@@ -55,7 +57,7 @@ while
+ 
+     STATUS=PASS
+     false
+-    
++
+ do :; done
+ 
+ kill $DINITPID
+diff --git a/src/igr-tests/basic/run-test.sh b/src/igr-tests/basic/run-test.sh
+index 09c9e14e..cef92f59 100755
+--- a/src/igr-tests/basic/run-test.sh
++++ b/src/igr-tests/basic/run-test.sh
+@@ -1,8 +1,10 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ rm -f ./basic-ran
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	basic
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/chain-to/run-test.sh b/src/igr-tests/chain-to/run-test.sh
+index e05dcc47..d727494b 100755
+--- a/src/igr-tests/chain-to/run-test.sh
++++ b/src/igr-tests/chain-to/run-test.sh
+@@ -1,8 +1,10 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ rm -f ./recorded-output
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	part1
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/check-basic/run-test.sh b/src/igr-tests/check-basic/run-test.sh
+index 7a71ebf1..f64daa3b 100755
+--- a/src/igr-tests/check-basic/run-test.sh
++++ b/src/igr-tests/check-basic/run-test.sh
+@@ -1,6 +1,8 @@
+ #!/bin/sh
+ 
+-../../dinitcheck -d sd > output.txt 2>&1
++cd "$(dirname $0)"
++
++"$DINITCHECK_EXEC" -d sd > output.txt 2>&1
+ if [ $? != 1 ]; then exit 1; fi
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/check-cycle/run-test.sh b/src/igr-tests/check-cycle/run-test.sh
+index 7a71ebf1..f64daa3b 100755
+--- a/src/igr-tests/check-cycle/run-test.sh
++++ b/src/igr-tests/check-cycle/run-test.sh
+@@ -1,6 +1,8 @@
+ #!/bin/sh
+ 
+-../../dinitcheck -d sd > output.txt 2>&1
++cd "$(dirname $0)"
++
++"$DINITCHECK_EXEC" -d sd > output.txt 2>&1
+ if [ $? != 1 ]; then exit 1; fi
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/check-lint/run-test.sh b/src/igr-tests/check-lint/run-test.sh
+index 7a71ebf1..f64daa3b 100755
+--- a/src/igr-tests/check-lint/run-test.sh
++++ b/src/igr-tests/check-lint/run-test.sh
+@@ -1,6 +1,8 @@
+ #!/bin/sh
+ 
+-../../dinitcheck -d sd > output.txt 2>&1
++cd "$(dirname $0)"
++
++"$DINITCHECK_EXEC" -d sd > output.txt 2>&1
+ if [ $? != 1 ]; then exit 1; fi
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/environ/run-test.sh b/src/igr-tests/environ/run-test.sh
+index 8e9c91d4..ca92db79 100755
+--- a/src/igr-tests/environ/run-test.sh
++++ b/src/igr-tests/environ/run-test.sh
+@@ -1,18 +1,20 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ export DINIT_SOCKET_PATH="$(pwd)/socket"
+ 
+ rm -f ./env-record
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+         -e environment1 \
+ 	checkenv
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+         -e environment2 \
+ 	checkenv
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	setenv1
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/environ/setenv.sh b/src/igr-tests/environ/setenv.sh
+index f3f1fc35..0102ad07 100755
+--- a/src/igr-tests/environ/setenv.sh
++++ b/src/igr-tests/environ/setenv.sh
+@@ -10,11 +10,11 @@ case "$1" in
+         if [ "$FOO" = "foo" ]; then
+             echo 2 >> ./env-record
+             export BAR=bar
+-            ../../dinitctl setenv BAR BAZ=baz
++            "$DINITCTL_EXEC" setenv BAR BAZ=baz
+         fi
+         ;;
+     setenv3)
+-        ../../dinitctl setenv FOO=foo
++        "$DINITCTL_EXEC" setenv FOO=foo
+         echo 3 >> ./env-record
+         ;;
+     *) ;;
+diff --git a/src/igr-tests/force-stop/run-test.sh b/src/igr-tests/force-stop/run-test.sh
+index 1341e6d3..8057febb 100755
+--- a/src/igr-tests/force-stop/run-test.sh
++++ b/src/igr-tests/force-stop/run-test.sh
+@@ -1,6 +1,8 @@
+ #!/bin/sh
+ 
+-../../dinit -d sd -u -p socket -q &
++cd "$(dirname $0)"
++
++"$DINIT_EXEC" -d sd -u -p socket -q &
+ DINITPID=$!
+ 
+ # give time for socket to open
+@@ -8,21 +10,21 @@ while [ ! -e socket ]; do
+     sleep 0.1
+ done
+ 
+-DINITCTLOUT="$(../../dinitctl -p socket list)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket list)"
+ if [ "$DINITCTLOUT" != "$(cat expected-1)" ]; then
+     echo "$DINITCTLOUT" > actual-1
+     kill $DINITPID; wait $DINITPID
+     exit 1
+ fi
+ 
+-DINITCTLOUT="$(../../dinitctl -p socket stop critical 2>&1)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket stop critical 2>&1)"
+ if [ "$DINITCTLOUT" != "$(cat expected-2.err)" ]; then
+     echo "$DINITCTLOUT" > actual-2.err
+     kill $DINITPID; wait $DINITPID
+     exit 1
+ fi
+ 
+-DINITCTLOUT="$(../../dinitctl -p socket stop --force critical 2>&1)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket stop --force critical 2>&1)"
+ if [ "$DINITCTLOUT" != "$(cat expected-3)" ]; then
+     echo "$DINITCTLOUT" > actual-3
+     kill $DINITPID; wait $DINITPID
+diff --git a/src/igr-tests/no-command-error/run-test.sh b/src/igr-tests/no-command-error/run-test.sh
+index c8ca6433..b5fd1a03 100755
+--- a/src/igr-tests/no-command-error/run-test.sh
++++ b/src/igr-tests/no-command-error/run-test.sh
+@@ -3,16 +3,18 @@
+ # Check that a service without a command configured causes the appropriate error.
+ #
+ 
++cd "$(dirname $0)"
++
+ rm -f dinit-run.log
+ 
+ # If cgroups support, supply cgroup base path to avoid potential "unable to determine
+ # cgroup" message
+ CGROUPS_BASE=""
+-if ../../dinit --version | grep -q " cgroups"; then
++if "$DINIT_EXEC" --version | grep -q " cgroups"; then
+     CGROUPS_BASE="-b \"\""
+ fi
+ 
+-../../dinit -d sd -u -p socket -q $CGROUPS_BASE \
++"$DINIT_EXEC" -d sd -u -p socket -q $CGROUPS_BASE \
+ 	no-command -l dinit-run.log
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/ps-environ/run-test.sh b/src/igr-tests/ps-environ/run-test.sh
+index 92e9cde6..34a00fd5 100755
+--- a/src/igr-tests/ps-environ/run-test.sh
++++ b/src/igr-tests/ps-environ/run-test.sh
+@@ -1,22 +1,24 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ rm -f ./env-record
+ 
+ export TEST_VAR_TWO=set-via-script
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	checkenv1
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	checkenv2
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	checkenv3
+ 
+-../../dinit -d sd -e dinit-environment -u -p socket -q \
++"$DINIT_EXEC" -d sd -e dinit-environment -u -p socket -q \
+ 	checkenv4
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	checkenv4
+ 
+ STATUS=FAIL
+diff --git a/src/igr-tests/reload1/run-test.sh b/src/igr-tests/reload1/run-test.sh
+index b0e615e8..9a6afa3e 100755
+--- a/src/igr-tests/reload1/run-test.sh
++++ b/src/igr-tests/reload1/run-test.sh
+@@ -1,10 +1,12 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ # Start with boot depending on a,b
+ rm -rf sd
+ cp -R sd1 sd
+ 
+-../../dinit -d sd -u -p socket -q &
++"$DINIT_EXEC" -d sd -u -p socket -q &
+ DINITPID=$!
+ 
+ # Give some time for startup
+@@ -12,7 +14,7 @@ sleep 0.2
+ 
+ STATUS=PASS
+ 
+-DINITCTLOUT="$(../../dinitctl -p socket list)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket list)"
+ if [ "$DINITCTLOUT" != "$(cat initial.expected)" ]; then
+     echo "$DINITCTLOUT" > initial.actual
+     STATUS=FAIL
+@@ -24,25 +26,25 @@ if [ "$STATUS" = PASS ]; then
+     cp -R sd2 sd
+ 
+     # First attempt should fail, c not started
+-    DINITCTLOUT="$(../../dinitctl --quiet -p socket reload boot 2>&1)"
++    DINITCTLOUT="$("$DINITCTL_EXEC" --quiet -p socket reload boot 2>&1)"
+     if [ "$DINITCTLOUT" != "$(cat output2.expected)" ]; then
+         echo "$DINITCTLOUT" > output2.actual
+         STATUS=FAIL
+     fi
+-    
++
+ fi
+ 
+ if [ "$STATUS" = PASS ]; then
+-    ../../dinitctl --quiet -p socket start c
+-    ../../dinitctl --quiet -p socket reload boot
+-    DINITCTLOUT="$(../../dinitctl --quiet -p socket list)"
++    "$DINITCTL_EXEC" --quiet -p socket start c
++    "$DINITCTL_EXEC" --quiet -p socket reload boot
++    DINITCTLOUT="$("$DINITCTL_EXEC" --quiet -p socket list)"
+     if [ "$DINITCTLOUT" != "$(cat output3.expected)" ]; then
+         echo "$DINITCTLOUT" > output3.actual
+         STATUS=FAIL
+     fi
+ fi
+ 
+-../../dinitctl --quiet -p socket shutdown
++"$DINITCTL_EXEC" --quiet -p socket shutdown
+ wait $DINITPID
+ 
+ if [ $STATUS = PASS ]; then exit 0; fi
+diff --git a/src/igr-tests/reload2/run-test.sh b/src/igr-tests/reload2/run-test.sh
+index 5a4860e1..00835674 100755
+--- a/src/igr-tests/reload2/run-test.sh
++++ b/src/igr-tests/reload2/run-test.sh
+@@ -1,28 +1,30 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ # Similar to reload1 test, but with boot service stopped while we reload.
+ 
+ # Start with boot depending on a,b
+ rm -rf sd
+ cp -R sd1 sd
+ 
+-../../dinit -d sd -u -p socket -q &
++"$DINIT_EXEC" -d sd -u -p socket -q &
+ DINITPID=$!
+ 
+ # Give some time for startup
+ sleep 0.2
+ 
+-../../dinitctl --quiet -p socket start hold
++"$DINITCTL_EXEC" --quiet -p socket start hold
+ 
+ STATUS=PASS
+ 
+-DINITCTLOUT="$(../../dinitctl -p socket list)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket list)"
+ if [ "$DINITCTLOUT" != "$(cat initial.expected)" ]; then
+     echo "$DINITCTLOUT" > initial.actual
+     STATUS=FAIL
+ fi
+ 
+-../../dinitctl --quiet -p socket stop boot
++"$DINITCTL_EXEC" --quiet -p socket stop boot
+ 
+ # Put alternate descriptions in place: boot depends on b, c
+ if [ "$STATUS" = PASS ]; then
+@@ -30,24 +32,24 @@ if [ "$STATUS" = PASS ]; then
+     cp -R sd2 sd
+ 
+     # This should succeed since boot is stopped
+-    DINITCTLOUT="$(../../dinitctl -p socket reload boot 2>&1)"
++    DINITCTLOUT="$("$DINITCTL_EXEC" -p socket reload boot 2>&1)"
+     if [ "$DINITCTLOUT" != "$(cat output2.expected)" ]; then
+         echo "$DINITCTLOUT" > output2.actual
+         STATUS=FAIL
+     fi
+-    
++
+ fi
+ 
+ if [ "$STATUS" = PASS ]; then
+-    ../../dinitctl --quiet -p socket start boot
+-    DINITCTLOUT="$(../../dinitctl -p socket list)"
++    "$DINITCTL_EXEC" --quiet -p socket start boot
++    DINITCTLOUT="$("$DINITCTL_EXEC" -p socket list)"
+     if [ "$DINITCTLOUT" != "$(cat output3.expected)" ]; then
+         echo "$DINITCTLOUT" > output3.actual
+         STATUS=FAIL
+     fi
+ fi
+ 
+-../../dinitctl --quiet -p socket shutdown
++"$DINITCTL_EXEC" --quiet -p socket shutdown
+ wait $DINITPID
+ 
+ if [ $STATUS = PASS ]; then exit 0; fi
+diff --git a/src/igr-tests/restart/run-test.sh b/src/igr-tests/restart/run-test.sh
+index 75f70b44..6197143d 100755
+--- a/src/igr-tests/restart/run-test.sh
++++ b/src/igr-tests/restart/run-test.sh
+@@ -1,8 +1,10 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ rm -f ./basic-ran
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	parent &
+ DINITPID=$!
+ 
+@@ -12,7 +14,7 @@ while [ ! -e socket ]; do
+ done
+ 
+ # wait until parent (and therefore 'basic') has fully started
+-../../dinitctl --quiet -p socket start parent
++"$DINITCTL_EXEC" --quiet -p socket start parent
+ 
+ sleep 0.1 # time for file to be written
+ 
+@@ -24,14 +26,14 @@ if [ -e basic-ran ]; then
+ fi
+ 
+ if [ $STATUS != PASS ]; then
+-    ../../dinitctl --quiet -p socket shutdown
++    "$DINITCTL_EXEC" --quiet -p socket shutdown
+     exit 1;
+ fi
+ 
+-rm basic-ran 
++rm basic-ran
+ 
+ STATUS=FAIL
+-../../dinitctl --quiet -p socket restart basic
++"$DINITCTL_EXEC" --quiet -p socket restart basic
+ sleep .1 # time for file write
+ if [ -e basic-ran ]; then
+    if [ "$(cat basic-ran)" = "ran" ]; then
+@@ -39,7 +41,7 @@ if [ -e basic-ran ]; then
+    fi
+ fi
+ 
+-../../dinitctl --quiet -p socket shutdown
++"$DINITCTL_EXEC" --quiet -p socket shutdown
+ wait $DINITPID
+ 
+ if [ $STATUS = PASS ]; then exit 0; fi
+diff --git a/src/igr-tests/svc-start-fail/run-test.sh b/src/igr-tests/svc-start-fail/run-test.sh
+index 6339a1d2..9c55a0e9 100755
+--- a/src/igr-tests/svc-start-fail/run-test.sh
++++ b/src/igr-tests/svc-start-fail/run-test.sh
+@@ -1,8 +1,10 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ rm -f ./basic-ran
+ 
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	boot &
+ DINITPID=$!
+ 
+@@ -12,7 +14,7 @@ while [ ! -e socket ]; do
+ done
+ 
+ # try to start "bad-command" which will fail
+-DINITCTLOUT="$(../../dinitctl -p socket start bad-command 2>&1)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket start bad-command 2>&1)"
+ if [ "$DINITCTLOUT" != "$(cat expected-1)" ]; then
+     echo "$DINITCTLOUT" > actual-1
+     kill $DINITPID; wait $DINITPID
+@@ -20,14 +22,14 @@ if [ "$DINITCTLOUT" != "$(cat expected-1)" ]; then
+ fi
+ 
+ # try to start command which will timeout
+-DINITCTLOUT="$(../../dinitctl -p socket start timeout-command 2>&1)"
++DINITCTLOUT="$("$DINITCTL_EXEC" -p socket start timeout-command 2>&1)"
+ if [ "$DINITCTLOUT" != "$(cat expected-2)" ]; then
+     echo "$DINITCTLOUT" > actual-2
+     kill $DINITPID; wait $DINITPID
+     exit 1
+ fi
+ 
+-../../dinitctl --quiet -p socket shutdown
++"$DINITCTL_EXEC" --quiet -p socket shutdown
+ wait $DINITPID
+ 
+ exit 0
+diff --git a/src/igr-tests/var-subst/run-test.sh b/src/igr-tests/var-subst/run-test.sh
+index b06d964c..6e353da5 100755
+--- a/src/igr-tests/var-subst/run-test.sh
++++ b/src/igr-tests/var-subst/run-test.sh
+@@ -1,9 +1,11 @@
+ #!/bin/sh
+ 
++cd "$(dirname $0)"
++
+ rm -f ./args-record
+ 
+ export TEST_VAR_ONE="var one" TEST_VAR_TWO=vartwo TEST_VAR_THREE=varthree
+-../../dinit -d sd -u -p socket -q \
++"$DINIT_EXEC" -d sd -u -p socket -q \
+ 	checkargs
+ 
+ STATUS=FAIL

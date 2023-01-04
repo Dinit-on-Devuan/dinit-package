@@ -1,0 +1,20 @@
+Package: dinit
+Version: 0.16.0-1
+Architecture: amd64
+Maintainer: Mobin Aydinfar <mobin@mobintestserver.ir>
+Installed-Size: 688
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 3.0), libstdc++6 (>= 11)
+Section: admin
+Priority: optional
+Homepage: https://davmac.org/projects/dinit
+Description: Service monitoring / "init" system
+ Dinit is a service supervisor with dependency support
+ which can also act as the system "init" program.
+ It was created with the intention of providing a portable
+ init system with dependency management, that was functionally
+ superior to many extant inits. Development goals include
+ clean design, robustness, portability, usability,
+ and avoiding feature bloat (whilst still handling common -
+ and some less-common - use cases).
+ Dinit is designed to integrate with rather than subsume or replace
+ other system software.

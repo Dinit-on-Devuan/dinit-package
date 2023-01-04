@@ -1,0 +1,377 @@
+== Version 0.16.0
+
+(Alpha release #8)
+
+This release contains some new features and bug fixes.
+
+Changes:
+ * "before" and "after" relationships can now be specified for services. These can be used to
+   control startup order without creating explicit dependencies between services.
+ * The "restart" command of dinitctl will now also restart hard dependents if the "--force"
+   option is used (previously the "--force" option was ignored, and the command would fail if
+   a dependent blocked the restart). Changes contributed by Duncan Overbruck.
+ * The "-t" (or "--service") command-line option has been implemented to allow unambiguously
+   specifying that the next argument is a service name. This can be used when booting Linux to
+   select a target service or services (dinit otherwise ignores potential service names in this
+   scenario, since the Linux kernel sometimes passes through kernel options to init).
+   Implemented by Mobin Aydinfar.
+ * The dinit daemon itself supports S6-compatible readiness notification (for when run under
+   another supervision system or controlling process). The "-r <fd>" command line argument
+   specifies the file descriptor to write the notification to. Contributed by Daniel Kolesa.
+ * Environment files (including per-service file as specified by env-file service setting):
+   support for commands !clear, !unset and !import. These give more flexibility in how much of the
+   original environment to expose to service processes. See the dinit(8) man page for more
+   information.
+ * The dinitctl utility provides more information if a service fails to start (avoiding the need
+   to query the status separately or check logs to get the same information).
+ * Fix bug with cgroup root path extraction where the path was longer than 64 characters (found
+   by Github continuous integration builds as implemented by Mobin Aydinfar).
+ * Fix bad pointer bug manifesting with very short command strings (reported by Duncan Overbruck).
+ * Reloading a service now checks for (and disallows) cyclic dependencies.
+ * Minor fix to service examples, contributed by Firas Khalil Khana.
+ * Various minor build/install fixes.
+
+Other:
+ * Github continuous integration was set up by Mobin Aydinfar 
+ 
+== Version 0.15.1
+
+(Alpha release #7)
+
+This contains minor fixes for the previous release.
+
+Changes:
+ * Remove extra newline which was printed after service description error log messages.
+ * Install dinit-monitor as part of "make install".
+
+== Version 0.15.0
+
+(Alpha release #6)
+
+This release contains bug fixes and new features.
+
+Changes:
+ * New "dinit-monitor" command can be used to perform notifications (via an external command, such
+   as notify-send) when a service changes state. This is primarily intended for users running dinit
+   in "user mode" rather than for system instances of dinit, although it works in either case. See
+   the dinit-monitor(8) manual page for details.
+ * Support on Linux for running service processes in a cgroup, via the "runs-in-cgroup" service
+   setting. Cgroups must be mounted/created outside of dinit (eg via an early service), there is no
+   support for this in dinit itself. See the dinit-service(5) manual page for details.
+ * "dinitctl enable", "dinitctl disable" and "dinitctl rmdep" now give better feedback in various
+   situations. For example, "dinitctl disable" will warn if a disabled service has other
+   dependents (which may cause it to start anyway).
+ * When parse errors occur in service description files, the relevant line number should now be
+   reported (by dinitcheck, or in the dinit log).
+ * Environment variable substitution in command lines is now performed for the "stop-command"
+   setting in exactly the same way as for the "command" setting. Previously, by oversight,
+   substitution was not performed for the "stop-command" setting.
+ * Fix: start timeout was not being honoured for service restarts.
+
+== Version 0.14.0
+
+(Alpha release #5)
+
+This release contains bug fixes and a new feature.
+
+Changes:
+ * "stop-command" service parameter can now be applied to process and bgprocess services. If
+   specified for these service types, the specified command is used to stop the service.
+ * "dinitctl status" now reports launch stage and error for services which failed to execute.
+   Example output:
+   
+       $ src/dinitctl status mpd
+       Service: mpd
+           State: STOPPED (could not be launched)
+               Stage: executing command
+               Error: No such file or directory
+   
+ * Fixes bug where "dinitctl status" command would sometimes report an error.
+ * Fixes a (situational, unlikely) bug where a bgprocess state could get stuck.
+ * Fixes a potential memory corruption / crash bug occurring in out-of-memory situations when
+   adding a dependency to a service (via "dinitctl reload" or "dinitctl add-dep").
+
+== Version 0.13.0
+
+NOTE: This release has some minor backwards-incompatible changes. Please read
+these notes carefully.
+
+This release includes changes contributed by Daniel Kolesa.
+
+Changes:
+ * A new dinitctl subcommand, "status", can be used to query extended status
+   information for an individual service.
+ * The default directory for user services has moved to ~/.config/dinit.d
+   (rather than ~/dinit.d).
+ * Some service settings now expand environment variables (given in the form
+   $VARNAME, in any location that it appears within the setting value). The
+   affected settings are: socket_path, logfile, env_file, working_dir and
+   pid_file.
+ * The variable substitution in command lines (which remains dependent on the
+   'sub-vars' load option, for now) uses the same substitution rules and logic
+   as for other settings. In particular, this means that a variable expansion
+   can occur as part of a command line argument (previously it always replaced
+   whole arguments). 
+ * The dinitctl program now uses the value of the DINIT_SOCKET_PATH
+   environment variable, if set, as the default control socket path. (If not
+   set, behaviour is the same as for previous versions).
+ * A "poweroff" symlink for shutdown will be installed alongside other symlinks
+   ("reboot", "halt" etc). This allows integration in environments that expect
+   such a command to be available.
+
+== Version 0.12.0
+
+This is the third Alpha release, issued as a follow-up to the previous Alpha
+releases. It contains a number of minor improvements.
+
+Changes:
+ * A new "--ignore-unstarted" option to dinitctl, causing it to return success
+   when attempting to restart a service which is not started (including when
+   no service description for it exists).
+ * Add an "always-chain" service option, so that chaining to another service
+   (as specified via the "chain-to" setting) becomes unconditional.
+   Feature contributed by Alexander Sherikov.
+ * Add support for multiple service directories to be specified (via multiple
+   --services-dir options).
+   Feature contributed by Alexander Sherikov.
+ * Improve control socket creation / stale socket removal. Previously, a
+   system instance would unconditionally unlink a pre-existing socket file,
+   and non-system instances would fail if a pre-existing socket file existed
+   (even if it was not active, i.e. no dinit instance was accepting
+   connections on it). Now, if there is an existing socket file, dinit will
+   attempt to connect to it, and will refuse to start if this succeeds, or
+   unlink it otherwise. Unfortunately this cannot be done atomically, so it
+   should not be relied on as a general means to prevent more than one
+   instance of dinit from starting.
+
+== Version 0.11.0
+
+This is a second Alpha release, issued as a follow-up to the previous Alpha
+release. It contains some minor bugfixes and a number of other improvements
+(all detailed below).
+
+Important: the default system socket location has changed. If version 0.11 of
+shutdown, halt etc are installed, they may not be able to communicate with the
+already-running (v0.10.0 or prior) dinit daemon. In this case, to shut the
+system down, use:
+
+    dinitctl -p /dev/dinitctl shutdown
+
+Important: the "no-sigterm" option has been removed. To specify that no
+SIGTERM signal should be sent to a process to stop it, specify a different
+signal (or "none") via the "term-signal" setting. It is no longer possible to
+have both SIGTERM and an additional signal sent, but the settings should be
+less confusing.
+
+Changes:
+ * dinit and dinitctl now support --version command line argument.
+ * Improved diagnostic message if a service description file exists but
+   can't be opened.
+ * Default system socket location has changed from /dev/dinitctl to
+   /run/dinitctl (see note above).
+ * Active status is indicated in "dinitctl list" output. Square brackets
+   indicate a service is marked active (i.e. it has been explicitly started)
+   and curly brackets indicate a service that has started due to being the
+   dependent of an active service.
+ * The "dinitcheck" utility now performs a number of additional checks.
+ * Better feedback is provided for various "dinitctl" commands. The affected
+   service name is reported for any status update.
+ * Fixed bug processing rlimit settings.
+ * Fixed issue with interpreting unwanted command line parameters passed from
+   linux kernel as service names.
+
+== Version 0.10.0
+
+This release is a major step towards a version 1.0 release. It should be
+considered an Alpha release; core functionality is complete but some
+ancillary functionality is still unimplemented. It is believed to be of
+good quality but bugs may be present.
+
+ * When not running as system init, dinit will now fail to start if the control
+   socket cannot be opened. In particular this should prevent accidentally
+   starting multiple instances of dinit (and all services).
+ * Services of type bgproc will no longer load if the pid-file setting is not
+   supplied. Previously such services could be started, but stopping them would
+   leave the process running.
+ * Re-worked manual service stop (via command). Previously, manually stopping
+   a service would inhibit automatic restart of the service, but not of its
+   dependents; this meant that the service might still restart due to a
+   dependent. In this version, manually stopping a service inhibits restart
+   of the service and all dependents (note that the --force option is required,
+   as previously, in order to stop a service which has active dependents).
+ * Re-worked soft dependency handling slightly. A dependency now (re-)attaches
+   to its dependent if it starts (or starts again) while the dependent is
+   started. This leads to overall more consistent behaviour (and is simpler
+   to implement properly).
+ * Re-worked pinning. A service that is pinned stopped can now prevent dependents
+   from starting (the behaviour is the same as if the service failed to start).
+ * Support start-timeout setting for process services. Previously this setting
+   was ignored for such services. It is mostly useful for services which also
+   have readiness notification configured (since otherwise, a process service is
+   considered started as soon as it begins execution).
+ * If a process-based service fails to restart, restart of dependent services
+   will be inhibited. This should prevent repeated attempts to launch a failing
+   process caused by a restarting dependent service.
+ * Fixed some cases where service target state would not be set correctly. This
+   could cause output of "dinitctl list" to incorrectly show that a service would
+   restart after stopping, when in fact it would remain stopped.
+ * Fixed various corner-case bugs in service management.
+
+== Version 0.9.1
+
+This is a bug-fix release.
+
+ * Fix a service getting stuck in the "stopping" state, if a dependent is
+   set to auto-restart ("restart = true").
+
+== Version 0.9.0
+
+This release includes some new functionality and a rework of the chain-load
+mechanism.
+
+ * The service specified via the "chain-to" setting will now only be started
+   if the initiating service completes successfully, i.e. if it terminates
+   normally (with an exit code of 0) and only if it is not manually stopped.
+ * New option "--container" (-o) inhibits system management functions (such
+   as machine shutdown/restart) that are normally enabled when dinit runs as
+   process ID 1. A complementary "--system-mgr" (-m) option enables system
+   management (even when not running as PID 1).
+ * Fixed pinned-started services stopping when released by a dependent
+   service, instead of remaining in the started state, and some other bugs
+   related to pinning. Some issues may remain to be fixed in a later release.
+
+== Version 0.8.2
+
+This is a bug-fix release.
+
+* Fixed group not being set correctly when "run-as" or "socket-uid" were used.
+* Fixed "dinitctl rm-dep" command
+* Fixed bug preventing shutdown when auto-restart services were configured
+* Fixed smooth recovery of bgprocess services
+
+== Version 0.8.1
+
+This is a bug-fix release.
+
+* Fixed crash on service load error.
+* Fixed an unchecked allocation leading to possible unexpected termination.
+* Fixed a slow memory leak (in the bundled Dasynq library).
+* Fixed --help option for "dinitcheck" not working.
+* Fixed badly formatted error message from process launch failure.
+* Fixed issue where log file would not always be flushed on exit.
+* Fixed "dinitcheck" crashing if service description could not be found.
+
+== Version 0.8.0
+
+This release includes major usability features.
+
+* New command "dinitcheck" checks service descriptions for errors (without attempting to load
+  or start the service). Checks the named service(s) and any dependencies.
+* Service descriptions can now be reloaded, using "dinitctl reload <service-name>". This works
+  for services which are started, with some restrictions, and for services which are stopped,
+  and allows dependencies to be altered.
+* dinitctl now defaults to the system process socket location when run as root. This means that
+  using '-s' is no longer necessary (it is still supported for backwards compatibility). A new
+  '-u' option can be used to communicate with the user daemon, if there is one.
+
+== Version 0.7.0
+
+This release adds a minor feature, and includes a re-work of some base functionality
+(which should not affect most use cases).
+
+ * dinitctl "restart" command added. Re-starts an already-running service without affecting
+   activation or dependency links.
+ * dinitctl "stop" command now requires a `--force` option if dependents of the specified
+   service would also need to stop.
+ * dinitctl "wake" command now reconnects dependency links from dependents of the specified
+   service, and can only be used if at least one such dependent is started.
+
+== Version 0.6.1:
+
+This is a bug-fix release with several minor fixes:
+
+ * Resource limits were not properly being set.
+ * Prevent early termination when standard input is closed or set to a device which cannot
+   be watched for input.
+ * Control protocol fix, possibly not affecting any real usage.
+
+== Version 0.6.0:
+
+This release adds a number of minor features:
+
+ * Better behaviour when boot fails. User can choose an action from reboot, resume boot process,
+   start the "recovery" service, or power-off. 
+ * New service settings for limiting resources at the process level: "rlimit-nofile",
+   "rlimit-core", "rlimit-data", "rlimit-addrspace". Both hard and soft limits can be set.
+   See dinit-service(5) for details.
+ * New "env-file" setting allows per-setting environment to be specified via a file. The file
+   is re-read each time the service process is started. 
+ * Added a "--quiet" option to suppress console output from Dinit.
+ * Dinit when run as a user daemon no longer logs via syslog. Logging to file can still be
+   enabled via the "-l"/"--log-file" option.
+ * Added a "--socket-path"/"-p" option to dinitctl, to specify the socket path for communication
+   with the dinit daemon.
+ 
+A number of minor bugfixes and other improvements are also implemented. An integration test
+framework has been added with a small number of tests, to complement the existing unit tests.
+
+== Version 0.5.2:
+
+This is a bug-fix release for several minor issues which have been found in the preceding
+release (0.5.1).
+
+ * Fix logging failure after log buffer becomes full.
+ * Fix readiness-fd notification not immediately updating service states.
+ * Fix use of old settings in sample configuration for Linux.
+ * Re-create control socket file node if it "disappears". Should solve issues if root filesystem
+   is mounted read-write on boot.
+ * Fix potential issue with service launch failure for services using a fixed notification fd. 
+
+== Version 0.5.1:
+
+This is a bug-fix release for several issues of varying severity which have been found in the
+preceding release.
+
+ * Improved logging behaviour when a service runs "on console" for a very short time.
+ * Fix for crash due to SIGALRM on OpenBSD.
+ * Fixes for compiling with Musl C library.
+ * Fix dinitctl "enable" and "disable" commands when path to service directory is absolute.
+ * "termsignal" setting renamed "term-signal" and now supports "KILL" signal. "termsignal"
+   is still supported for compatibility with existing service descriptions.
+ * Other minor fixes.
+
+== Version 0.5.0:
+
+This version adds S6-compatible readiness notification support, and adds support for updating
+the "utmp" database when services start/stop (this functionality should be avoided if possible
+since the "utmp" database is mostly an historical artifact, and system support is often prone
+to issues which allow unprivileged users to prevent updates and deny or delay logins; however,
+utilities such as "who" may depend on the database being updated appropriately). 
+
+Other changes:
+ * Add "-u" command line option to force running dinit as a user instance.
+ * Add a "chain-to" service property to better support recovery services.
+ * Add a "shares-console" service option to allow running services "on the console" without having
+   them own it exclusively.
+ * Add "inittab-id" and "inittab-line" service settings for utmp support.
+ * Minor bugfixes.
+
+== Version 0.4.0:
+
+This version focuses on being more "distribution friendly". It adds mechanisms to add and remove
+dependencies, either temporarily or persistently, between services without manual editing of
+service description files.
+
+Changes:
+ * A new service description directive, "waits-for.d", allows specifying a directory for which the
+   contents (filenames) are read as dependencies. This provides a convenient way to add and remove
+   dependencies to service descriptions without editing the textual service description file. 
+ * dinitctl has new commands, "add-dep" and "rm-dep", to add or remove a dependency between
+   services. The dependency is not persisted and won't survive a restart. Check the man page for
+   details.
+ * dinitctl has new commands, "enable" and "disable". These permanently enable/disable
+   a service for some target ("boot" by default) by creating/destroying a symbolic link
+   in the waits-for.d directory specified in the service description (and create/remove
+   waits-for dependency dynamically). Check the man page for details.
+ * A code style guide has been added (in the "doc" directory).
+ * More tests, minor bugfixes.

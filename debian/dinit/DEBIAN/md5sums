@@ -1,0 +1,17 @@
+7507ffe7ec3df1ccea3b3b838b95a7f6  sbin/dinit
+8bd1d307984c68c3bf1b562252631816  sbin/dinit-halt
+3f4457bec564bf0c6ddee890270a9fe0  sbin/dinit-monitor
+8bd1d307984c68c3bf1b562252631816  sbin/dinit-reboot
+8bd1d307984c68c3bf1b562252631816  sbin/dinit-shutdown
+2934dbf1e1c981ff9e89874f32f32bd0  sbin/dinitcheck
+1cb667abeed14314335e26a1824fe91a  sbin/dinitctl
+344d6ee635093f8d61f95d0cefe090e6  usr/share/doc/dinit/changelog.Debian.gz
+c08033b7ab17b562765874f808f30114  usr/share/doc/dinit/copyright
+001faa75c0f92bcf931a784983c13f83  usr/share/man/man5/dinit-service.5.gz
+67fd139c070ac4d2a11ff626f3668578  usr/share/man/man8/dinit-halt.8.gz
+b374c0c5a94d0a5041d3ac6496c9adfc  usr/share/man/man8/dinit-monitor.8.gz
+67fd139c070ac4d2a11ff626f3668578  usr/share/man/man8/dinit-reboot.8.gz
+67fd139c070ac4d2a11ff626f3668578  usr/share/man/man8/dinit-shutdown.8.gz
+f554afefd5ffddffe49040cedeaf2651  usr/share/man/man8/dinit.8.gz
+fee9fdbc0463c5c41217955ef59349f2  usr/share/man/man8/dinitcheck.8.gz
+51b2dd850b40aab9dd7b862c26c82e22  usr/share/man/man8/dinitctl.8.gz

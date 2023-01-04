@@ -1,0 +1,155 @@
+Dinit Design
+============
+
+NOTE: This document is intended to provide an overview. Specifics are generally included as
+      comments/documentation within source files.
+
+
+Design philosophy
+-----------------
+
+Software design always involves balancing different concerns. Important concerns considered during
+development of Dinit include:
+
+- Usability. The software should be easy to use and understand. Dangerous actions should be
+  guarded (eg stopping a service via dinitctl requires a "--force" argument if it would also cause
+  dependent services to stop). Common use cases should be supported by the feature set.
+  Documentation should be complete. Error messages should be useful. Traceability/debugging is
+  important.
+- Compatibility and interopability. The software should work together with other pre-existing
+  software; it is a piece of a larger puzzle. New interfaces should only be created when they
+  provide a tangible benefit (eg Dinit supports the same readiness protocol as S6, and works with
+  legacy processes that fork after launching via the bgprocess service type. It logs via the
+  standard syslog mechanism).
+- Scope. The feature set is restricted, but is large enough to provide utility and usability.
+- Generality. Arbitrary restrictions should be avoided. Size is kept small and memory use low to
+  make Dinit usable on systems with limited resources. Code remains portable across different
+  operating systems.
+- Maintainability. Code should be readable and well-documented; it should leverage the compiler's
+  optimisations to remove abstraction penalty, wherever possible, so that the code can be more
+  expressive, and comments should clearly explain why optimisations live "in the code" in cases
+  where it is otherwise necessary.
+
+Of course, there are always trade-offs, but I believe that Dinit strikes a good balance with
+regard to the concerns listed above.
+
+
+Design fundamentals
+-------------------
+
+The design is based around an event loop: events include process termination, signal reception,
+and I/O coming in from control sockets (used to issue service start/stop commands etc via
+dinitctl). The Dasynq library provides the backend event loop functionality; it is included
+with the Dinit source, but has a separate web page and documentation:
+
+    http://davmac.org/projects/dasynq/ 
+
+In Dinit, service actions are often performed by setting "propagation" flags, inserting the
+service in a queue, and then processing the queues. Thus a lot of service actions are performed
+by first calling a function on a service and then draining the propagation queues. More
+information can be found in comments at the beginning of the includes/service.h header.
+
+The logging subsystem is designed to log to two different sinks - typically, one is the console
+and one is the syslog facility, but other arrangements are possible. It uses a circular buffer
+for each output sink, and if the buffer becomes full it discards additional messages to avoid
+blocking (though it flags that this has occurred and later outputs a message to the sink).
+Services may acquire the console and in this case output is discarded (though it will of
+course continue to be logged to the other sink).
+
+Control protocol handling uses a circular receive buffer, but allocates storage for outgoing
+packets dynamically. If allocation fails an "out of memory" flag is set and the connection is
+closed after writing an "out of memory" information packet.
+
+
+Services
+--------
+
+There are presently four service types: internal, process, bgprocess and scripted. The latter
+three share the fact that they execute external processes and so naturally share some
+implementation. The base service class is "service_record" - this directly supports "internal"
+services. The "base_process_service" class extends this and serves as a base class for the other
+three service types (which all manage external processes) and provides common functionality.
+
+Various functions in the service_record / base_process_service classes are virtual, so that they
+can be overridden by the subclasses.
+
+All execution of child processes related to services currently goes through
+service_record::run_child_proc() (after forking).
+
+Services are grouped in a "service_set". This provides the essential interface between the event
+loop and services.
+
+
+Key considerations
+------------------
+
+Dinit's overall function is fairly straightforward but there are some considerations that cause
+its design to be more complicated than it might otherwise be.  The heart of the issue is that
+Dinit should not stall on I/O and its essential operation should never fail, which means that many
+code paths cannot perform memory allocation for example, and that log messages all go through a
+buffer.
+
+Note that blocking actions are avoided: non-blocking I/O is used where possible; Dinit must
+remain responsive at all times.
+
+In general operation Dinit methods should avoid throwing exceptions and be declared as 'noexcept',
+or otherwise be clearly documented as throwing exceptions. Errors should always be handled as
+gracefully as possible and should not prevent Dinit's continued operation. Particular care is
+needed for dynamic allocations: C++ style allocations (including adding elements to C++
+containers, or appending to strings) will raise 'std::bad_alloc' if they cannot allocate memory,
+and this must be handled appropriately. Once it has started regular operation, dinit must not
+terminate due to an error condition, even if the error is an allocation failure or another
+exception.
+
+
+Source code organisation
+------------------------
+
+Most function comments and general documentation can be found in header files rather than in the
+corresponding source files.
+
+dinit-main.cc - just a wrapper around the entry point; reports exceptions
+
+dinit.cc - main entry point, command line parsing, general initialisation, event loop processing,
+        signal handling, system management (shutdown / reboot etc)
+
+service.cc - base service logic (see service.h)
+
+proc-service.cc, baseproc-service.cc - process-based service logic (see service.h, proc-service.h)
+        This builds on functionality in service.cc
+    
+run-child-proc.cc - contains service_record::run_child_proc(), used to run child processes.
+
+load-service.cc - service loading (see load-service.h)
+
+control.cc - control protocol handling
+
+dinit-log.cc - logging subsystem
+
+tests/ - various tests
+igr-tests/ - integration tests
+
+The utility sources are:
+
+dinitctl.cc - the control/status utility
+shutdown.cc - shutdown/halt/reboot utility
+
+
+Testing
+-------
+
+The unit tests work by mocking out parts of Dinit, and some system calls, in order to isolate
+functional units. In the src/tests/test-includes directory are three mock headers. When compiling
+tests, the src/tests/includes directory is populated with (linked) copies of the standard headers
+from src/include, but with mocked headers taken from src/tests/test-includes instead.
+
+Note that systems calls are not mocked directly, instead:
+
+ - system calls are wrapped in the bp_sys namespace, as defined in the baseproc-sys.h header;
+ - for testing, the header is replaced with a mock header. 
+
+(This avoids problems that might arise from replacing important system calls, and in
+particular avoids interfering with the test harness itself).
+
+It is important when writing new code in Dinit to avoid calling system calls directly, and to
+instead call the wrapper in bp_sys.

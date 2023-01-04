@@ -1,0 +1,25 @@
+Source: dinit
+Maintainer: Mobin Aydinfar <mobin@mobintestserver.ir>
+Section: admin
+Priority: optional
+Standards-Version: 4.6.1.0
+Build-Depends: debhelper (>= 9), debhelper-compat (= 13), g++ (>= 4.9), meson (>= 0.47.0), m4
+Vcs-Browser: https://github.com/davmac314/dinit
+Vcs-Git: https://github.com/davmac314/dinit.git
+Rules-Requires-Root: no
+
+Package: dinit
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Homepage: https://davmac.org/projects/dinit
+Description: Service monitoring / "init" system
+ Dinit is a service supervisor with dependency support
+ which can also act as the system "init" program.
+ It was created with the intention of providing a portable
+ init system with dependency management, that was functionally
+ superior to many extant inits. Development goals include
+ clean design, robustness, portability, usability,
+ and avoiding feature bloat (whilst still handling common - 
+ and some less-common - use cases).
+ Dinit is designed to integrate with rather than subsume or replace
+ other system software.
