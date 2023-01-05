@@ -1,0 +1,19 @@
+Fix "bad-whatis-entry" lintian error.
+
+Signed-off-by: Mobin Aydinfar <mobin@mobintestserver.ir>
+
+--
+diff --git a/doc/manpages/dinit-service.5.m4 b/doc/manpages/dinit-service.5.m4
+index 3d07cf6..6bbbb9c 100644
+--- a/doc/manpages/dinit-service.5.m4
++++ b/doc/manpages/dinit-service.5.m4
+@@ -1,7 +1,7 @@
+ changequote(`@@@',`$$$')dnl
+ @@@.TH DINIT-SERVICE "5" "$$$MONTH YEAR@@@" "Dinit $$$VERSION@@@" "Dinit \- service management system"
+ .SH NAME
+-Dinit service description files
++dinit-service \- Dinit service description files
+ .\"
+ .SH SYNOPSIS
+ .\"
+

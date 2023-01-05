@@ -2,4 +2,5 @@ use_env_vars_for_igr_tests.patch
 use_symlinked_headers.patch
 meson_for_0.16.0.patch
 fix_loadtests_on_meson.patch
+fix_bad_entry_lintian_error.patch
 debian_custom_options.patch
