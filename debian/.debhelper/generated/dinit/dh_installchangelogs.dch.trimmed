@@ -1,6 +1,0 @@
-dinit (0.16.0-1) unstable; urgency=medium
-
-  * Initial release. Closes: #1029577
-  * Fix many things reported by lintian.
-
- -- Mobin Aydinfar <mobin@mobintestserver.ir>  Mon, 26 Dec 2022 15:01:41 +0330
