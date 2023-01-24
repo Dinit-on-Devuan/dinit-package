@@ -1,0 +1,362 @@
+Description: Experimental "configure" script
+
+Author: Mobin Aydinfar <mobin@mobintestserver.ir>
+
+--- /dev/null
++++ dinit-0.16.0/configure
+@@ -0,0 +1,355 @@
++#!/bin/sh
++### Custom configure script of Dinit.
++## Initial prepartion
++set -eu
++cd "$(dirname "$0")"
++
++## Helper functions
++# According to POSIX, echo has unspecified behavior if any of its arguments contain “\” or
++# if its first argument is “-n”. Unix™ standards fill in this unspecified area for
++# XSI-conformant implementations, by specifying nasty undesirable behavior that no one wants
++# (“\” is interpreted as a C-string-literal style escape), and other popular implementations
++# such as Bash interpret argument values other than “-n” as special options even
++# when in “POSIX compatibility” mode, rendering then nonconformant.
++# These issues mean echo "$var" can sting you whenever you do not have strict guarantees
++# about the contents of var (for example that it contains a nonnegative integer).
++# So we replace shell built-in echo with a printf based function.
++# For more info see http://www.etalabs.net/sh_tricks.html
++echo()
++{
++    IFS=" " printf %s\\n "$*"
++}
++
++info()
++{
++    echo "$*"
++}
++
++sub_info()
++{
++    echo "  ... $*"
++}
++
++error()
++{
++    echo "Error: $*"
++    exit 1
++}
++
++sub_error()
++{
++    echo "  ... Error: $*"
++    exit 1
++}
++
++warning()
++{
++    echo
++    echo "Warning: $*"
++}
++
++sub_warning()
++{
++    echo "  ... $*"
++    echo
++}
++
++create_testfile_cc()
++{
++    echo "int main(int argc, char **argv) { return 0; }" > testfile.cc
++}
++
++findcxx()
++{
++    if type "$1" > /dev/null 2>&1; then
++        if [ "${2:-}" = "host" ]; then
++            hostcompiler="$1"
++        else
++            compiler="$1"
++        fi
++    fi
++}
++
++cxx_works()
++{
++    info Checking "$1" works...
++    if ! $compiler -o testfile.o testfile.cc; then
++        rm -f testfile*
++        sub_error Seems like C++ compiler is not working!
++    else
++        rm -f testfile
++        sub_info Yes.
++    fi
++}
++
++try_cxx_argument()
++{
++    info Checking whatever compiler accpets "$2"...
++    if $compiler $CXXOPTS $2 ${CXXOPTS_POST:-} $LDFLAGS ${LDFLAGS_POST:-} testfile.cc -o testfile > /dev/null 2>&1; then
++        rm testfile
++        sub_info Yes.
++        eval "$1=\"\${$1} \$2\""
++        eval "$1=\${$1# }"
++    else
++        if [ "$2" = "-std=c++11" ]; then
++            sub_error "Seems like C++ compiler don't support $2 but It's required!"
++        else
++            sub_info No.
++        fi
++    fi
++}
++
++try_ld_argument()
++{
++    info Checking whatever linker accepts "$2"...
++    if $compiler $CXXOPTS ${CXXOPTS_POST:-} $LDFLAGS ${LDFLAGS_POST:-} $2 testfile.cc -o testfile > /dev/null 2>&1; then
++        sub_info Yes.
++        eval "$1=\"\${$1} \$2\""
++        eval "$1=\${$1# }"
++    else
++        sub_info No.
++    fi
++}
++
++usage()
++{
++    cat << EOF
++Usage: $0 [OPTION]...
++
++Defaults for the options are specified in brackets.
++
++  --help                        This help message.
++  --quiet                       Don't print normal messages, just errors.
++  --clean                       Clear mconfig and configure's temp files.
++
++Target options:
++  --platform=PLATFORM           Set the platform manually (Just for cross-platform cross-compile!) [autodetected]
++                                  For all cross-compiles (even this) don't forget to set correct CXX and HOSTCXX!
++
++Installation directories:
++  --prefix=PREFIX               Main installtion prefix [/usr]
++  --exec-prefix=EPREFIX         Main executables location [/]
++  --sbindir=SBINDIR             Dinit executables [EPREFIX/sbin]
++  --mandir=MANDIR               Dinit man-pages location [PREFIX/share/man]
++  --syscontrolsocket=SOCKETPATH Dinitctl socket location [/run/dinitctl] on Linux based systems
++                                                         [/var/run/dinitctl] on Other systems
++
++Optional options:
++  --shutdown-prefix=PREFIX      Name prefix for shutdown, poweroff, reboot, halt programs []
++  --enable-shutdown             Build shutdown, poweroff, reboot, halt programs [Enabled only on Linux based systems]
++  --disable-shutdown            Don't build shutdown, poweroff, reboot, halt programs
++  --enable-cgroups              Enable Cgroups support [Enabled only on Linux based systems]
++  --disable-cgroups             Disable Cgroups support
++  --enable-sanitize             Enable -fsanitize for Unit tests [auto]
++  --disable-sanitize            Disable -fsanitize for Unit tests
++  --enable-utmpx                Enable manipulating the utmp/utmpx database via the related POSIX functions [auto]
++  --disable-utmpx               Disable manipulating the utmp/utmpx database via the related POSIX functions
++
++Environment variables can be used:
++  Note: environments vars can be passed as $0 argument.
++  Note: CXXOPTS and LDFLAGS will be set to the options that the configure script uses as default for the platform,
++  filtered to remove any options not supported by the compiler/linker. For disable this thing just pass empty
++  value as CXXOPTS and LDFLAGS or pass some flags as them.
++
++  CXX                           If you want to use specific C++ compiler.
++  HOSTCXX                       If you want to cross-compiling and set the native C++ compiler.
++  CXXOPTS                       If you want to use some arguments in C++ compiler command line.
++  CXXOPTS_POST                  If you want to use some arguments in C++ compiler command line.
++                                  It's passed after CXXOPTS without disable that.
++  LDFLAGS                       If you want to use some arguments in Linker command line.
++  LDFLAGS_POST                  If you want to use some arguments in Linker command line.
++                                  It's passed after LDFLAGS without disable that.
++
++Note: be careful about passing a path with space as prefix/eprefix/sbindir/mandir:
++for this thing You need to use backslash (\) with double quotation (") for every space.
++For example: ./configure --sbindir="/usr/bin\ with\ space/"
++
++See BUILD file for more information.
++EOF
++    exit 0
++}
++
++## General Defines
++PLATFORM=$(uname)
++PREFIX="/usr"
++EPREFIX="/"
++SANITIZEOPTS=""
++SBINDIR="/sbin"
++MANDIR="/share/man/"
++NO_SANITIZE="auto"
++SHUTDOWN_PREFIX=""
++if [ "$PLATFORM" = "Linux" ]; then
++    BUILD_SHUTDOWN=yes
++    SUPPORT_CGROUPS=1
++else
++    BUILD_SHUTDOWN=no
++    SUPPORT_CGROUPS=0
++fi
++
++## Flag praser
++for arg in "$@"; do
++    case "$arg" in
++        --help) usage ;;
++        --quiet)
++            info() { true; }
++            sub_info() { true; }
++            warning() { true; }
++            sub_warning() { true; }
++        ;;
++        --clean) rm -f test* & rm -f mconfig && exit 0 ;;
++        --platform=*) PLATFORM="${arg#*=}" && shift ;;
++        --prefix=*) PREFIX="${arg#*=}" && shift ;;
++        --exec-prefix=*) EPREFIX="${arg#*=}" && shift;;
++        --sbindir=*) SBINDIR="${arg#*=}" && shift ;;
++        --mandir=*) MANDIR="${arg#*=}" && shift ;;
++        --syscontrolsocket=*) SYSCONTROLSOCKET="${arg#*=}" && shift ;;
++        --shutdown-prefix=*) SHUTDOWN_PREFIX="${arg#*=}" && shift ;;
++        --enable-shutdown) BUILD_SHUTDOWN=yes ;;
++        --disable-shutdown) BUILD_SHUTDOWN=no ;;
++        --enable-cgroups) SUPPORT_CGROUPS=1 ;;
++        --disable-cgroups) SUPPORT_CGROUPS=0 ;;
++        --enable-sanitize) NO_SANITIZE=0 ;;
++        --disable-sanitize) NO_SANITIZE=1 ;;
++        --enable-utmpx) USE_UTMPX=1 ;;
++        --disable-utmpx) USE_UTMPX=0 ;;
++        *=*)
++            envvar=$(expr "x$arg" : 'x\([^=]*\)=')
++            envvar_value=$(expr "X$arg" : '[^=]*=\(.*\)') || envvar_value="" # Fix empty var bug
++            eval "$envvar=\$envvar_value"
++            export "${envvar?}"
++        ;;
++        *) warning Unknown argument: "$arg" ;;
++    esac
++done
++
++## Resolve SYSCONTROLSOCKET based on PLATFORM
++if [ "$PLATFORM" = "Linux" ]; then
++    SYSCONTROLSOCKET="/run/dinitctl"
++else
++    SYSCONTROLSOCKET="/var/run/dinitctl"
++fi
++
++## Resolve final CXXOPTS and LDFLAGS
++if [ -z "${CXXOPTS+IS_SET}" ]; then
++    NO_CXXOPTS=false
++    CXXOPTS=""
++else
++    NO_CXXOPTS=true
++fi
++if [ -z "${LDFLAGS+IS_SET}" ]; then
++    NO_LDFLAGS=false
++    LDFLAGS=""
++else
++    NO_LDFLAGS=true
++fi
++
++## Resolve final paths
++SBINDIR="$EPREFIX/$SBINDIR"
++MANDIR="$PREFIX/$MANDIR"
++
++## Verify PLATFORM value
++if [ "$PLATFORM" != "Linux" ] && [ "$PLATFORM" != "FreeBSD" ] && \
++[ "$PLATFORM" != "OpenBSD" ] && [ "$PLATFORM" != "Darwin" ]; then
++    warning "$PLATFORM" platform is unknown!
++    sub_warning Known Platforms are: Linux, FreeBSD, OpenBSD, Darwin
++fi
++
++## Create testfile.cc to test c++ compiler
++create_testfile_cc
++
++## Find and test C++ compiler
++info Checking C++ compiler...
++if [ -n "${CXX:-}" ]; then
++    sub_info "$CXX" is user/system prefered C++ compiler.
++    compiler="$CXX"
++else
++    for guess in g++ clang++ c++; do
++        findcxx "$guess"
++        if [ -n "${compiler:-}" ]; then
++            sub_info "$compiler"
++            break # Found
++        fi
++    done
++    if [ -z "${compiler:-}" ]; then
++       sub_error No C++ compiler found! # Not found
++    fi
++fi
++if [ -n "${HOSTCXX:-}" ]; then
++    info Checking Host C++ Compiler...
++    sub_info "$HOSTCXX" is user/system prefered native C++ compiler.
++    hostcompiler="$HOSTCXX"
++    if [ -z "${compiler:-}" ] || [ -z "${hostcompiler:-}" ]; then
++       sub_error No C++ compiler found! # Not found
++    fi
++fi
++cxx_works "$compiler"
++if [ -n "${hostcompiler:-}" ]; then
++    cxx_works "$hostcompiler"
++fi
++
++## Test compiler/linker supported arguments
++if [ "$NO_CXXOPTS" = "false" ]; then
++    for argument in -std=c++11 \
++                    -Wall \
++                    -Os \
++                    -fno-plt
++    do
++        try_cxx_argument CXXOPTS $argument
++    done
++    if [ "$PLATFORM" != "FreeBSD" ]; then
++        try_cxx_argument CXXOPTS -flto
++    fi
++    if [ "$PLATFORM" != "Darwin" ]; then
++        try_cxx_argument CXXOPTS -fno-rtti
++    fi
++fi
++if [ "$PLATFORM" = "FreeBSD" ] && [ "$NO_LDFLAGS" = "false" ]; then
++    try_ld_argument LDFLAGS -lrt
++fi
++if [ "${NO_SANITIZE:-}" = "auto" ]; then
++    try_ld_argument SANITIZEOPTS -fsanitize=address,undefined
++elif [ "${NO_SANITIZE:-}" = "0" ]; then
++    SANITIZEOPTS="-fsanitize=address,undefined"
++fi
++
++## Create mconfig
++rm -f testfile*
++info Creating mconfig...
++cat << EOF > mconfig
++## Auto-generated by "$0" for "$PLATFORM"
++# Installation path options.
++
++SBINDIR=$SBINDIR
++MANDIR=$MANDIR
++SYSCONTROLSOCKET=$SYSCONTROLSOCKET
++
++# General build options.
++
++# Linux (GCC): Note with GCC 5.x/6.x you must use the old ABI, with GCC 7.x you must use
++# the new ABI. See BUILD file for more information.
++# MacOS: Cannot use -fno-rtti: apparently prevents exception handling from working properly.
++# FreeBSD: Cannot use LTO with default linker.
++
++CXX=$compiler
++CXXOPTS=$CXXOPTS ${CXXOPTS_POST:-}
++LDFLAGS=$LDFLAGS ${LDFLAGS_POST:-}
++BUILD_SHUTDOWN=$BUILD_SHUTDOWN
++SANITIZEOPTS=${SANITIZEOPTS:-}
++
++# Feature settings
++SUPPORT_CGROUPS=$SUPPORT_CGROUPS
++
++# Optional settings
++SHUTDOWN_PREFIX=${SHUTDOWN_PREFIX:-}
++EOF
++if [ -n "${USE_UTMPX:-}" ]; then
++    echo "USE_UTMPX=$USE_UTMPX" >> mconfig
++fi
++if [ -n "${hostcompiler:-}" ]; then
++    echo "" >> mconfig
++    echo "# For cross-compiling" >> mconfig
++    echo "HOSTCXX=$hostcompiler" >> mconfig
++fi
++sub_info done.
++info Done!
++exit 0

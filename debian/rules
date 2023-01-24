@@ -4,4 +4,18 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 DPKG_EXPORT_BUILDFLAGS = 1
 
 %:
-	dh $@ --buildsystem=meson
+	dh $@
+
+override_dh_auto_clean:
+	echo "SHUTDOWN_PREFIX=dinit-" > ./mconfig
+	# FIXME: Remove thsese rm(s) in 0.17.0
+	rm -f src/dinit-monitor
+	rm -f src/dinit-shutdown
+	rm -f src/tests/envtests
+	rm -rf src/tests/includes/
+	rm -rf src/tests/cptests/includes/
+	$(MAKE) clean
+	rm mconfig
+
+override_dh_auto_configure:
+	sh configure --disable-sanitize CXXOPTS_POST="$(CXXFLAGS)" LDFLAGS_POST="$(LDFLAGS)"
