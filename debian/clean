@@ -1,0 +1,9 @@
+# FIXME: Remove thsese files in 0.17.0
+src/dinit-monitor
+src/dinit-shutdown
+src/tests/envtests
+src/igr-tests/check-lint/output.txt
+src/igr-tests/no-command-error/dinit-run.log
+src/igr-tests/var-subst/args-record
+src/tests/includes/
+src/tests/cptests/includes/

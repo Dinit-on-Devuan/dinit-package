@@ -8,14 +8,12 @@ DPKG_EXPORT_BUILDFLAGS = 1
 
 override_dh_auto_clean:
 	echo "SHUTDOWN_PREFIX=dinit-" > ./mconfig
-	# FIXME: Remove thsese rm(s) in 0.17.0
-	rm -f src/dinit-monitor
-	rm -f src/dinit-shutdown
-	rm -f src/tests/envtests
-	rm -rf src/tests/includes/
-	rm -rf src/tests/cptests/includes/
 	$(MAKE) clean
 	rm mconfig
 
 override_dh_auto_configure:
-	sh configure --disable-sanitize CXXOPTS_POST="$(CXXFLAGS)" LDFLAGS_POST="$(LDFLAGS)"
+	sh configure CXXOPTS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)"
+
+override_dh_auto_test:
+	$(MAKE) check
+	$(MAKE) check-igr
