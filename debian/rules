@@ -17,3 +17,6 @@ override_dh_auto_configure:
 override_dh_auto_test:
 	$(MAKE) check
 	$(MAKE) check-igr
+
+override_dh_auto_install:
+	dh_auto_install -- STRIPOPTS="" # Be compatible with debcompat 13

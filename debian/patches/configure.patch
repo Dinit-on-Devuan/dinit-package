@@ -3,7 +3,7 @@ Description: Experimental "configure" script
 Author: Mobin Aydinfar <mobin@mobintestserver.ir>
 
 --- /dev/null
-+++ dinit-0.16.0/configure
++++ dinit-0.16.1/configure
 @@ -0,0 +1,355 @@
 +#!/bin/sh
 +### Custom configure script of Dinit.

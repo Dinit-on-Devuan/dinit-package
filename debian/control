@@ -3,7 +3,7 @@ Maintainer: Mobin Aydinfar <mobin@mobintestserver.ir>
 Section: admin
 Priority: optional
 Standards-Version: 4.6.1.0
-Build-Depends: debhelper (>= 9), debhelper-compat (= 11), g++ (>= 4.9), meson (>= 0.47.0), m4
+Build-Depends: debhelper (>= 9), debhelper-compat (= 13), g++ (>= 4.9), m4
 Homepage: https://davmac.org/projects/dinit
 Vcs-Browser: https://salsa.debian.org/mobin2008/dinit
 Vcs-Git: https://salsa.debian.org/mobin2008/dinit.git
