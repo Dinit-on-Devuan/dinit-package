@@ -13,7 +13,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     # on MacOS, g++ symlinked to clang++
     # We must verify that
     - name: Verify g++ (it is g++ or clang++?)

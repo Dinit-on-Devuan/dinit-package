@@ -15,7 +15,7 @@ jobs:
       image: debian:bullseye
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Getting depends
       run: apt-get update && apt-get install gcc make m4 g++ file -y
     - name: Print g++ architecture

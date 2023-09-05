@@ -15,7 +15,7 @@ jobs:
       image: debian:bullseye
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Add 32-bit repos
       run: dpkg --add-architecture i386
     - name: Getting depends
